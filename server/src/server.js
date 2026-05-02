@@ -13,6 +13,7 @@ import { initYtdlp } from './services/ytdlpService.js';
 const app = express();
 const DEFAULT_PORT = 5050;
 const PORT = Number.parseInt(process.env.PORT || `${DEFAULT_PORT}`, 10);
+const HOST = process.env.HOST || '0.0.0.0';
 
 // ----- Security & infra middleware -----
 app.use(helmet({
@@ -23,10 +24,27 @@ app.use(helmet({
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'https://shailsoft.github.io',
+  'https://shailsoft-videodownloader.onrender.com',
+];
+
+const allowedOrigins = (process.env.CORS_ORIGIN || defaultAllowedOrigins.join(','))
   .split(',')
-  .map((o) => o.trim());
-app.use(cors({ origin: allowedOrigins, credentials: false }));
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  credentials: false,
+}));
 
 app.use(express.json({ limit: '64kb' }));
 
@@ -53,9 +71,9 @@ app.use(errorHandler);
 initYtdlp()
   .catch((err) => console.error('[bootstrap] error:', err))
   .finally(() => {
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, HOST, () => {
       // eslint-disable-next-line no-console
-      console.log(`▶ VidGrab API listening on http://localhost:${PORT}`);
+      console.log(`▶ VidGrab API listening on http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
     });
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
