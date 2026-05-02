@@ -21,7 +21,6 @@ services:
   - type: web
     name: shailsoft-videodownloader
     runtime: static
-    plan: free
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: dist
