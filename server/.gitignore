@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+.DS_Store
+
+# Auto-downloaded yt-dlp binary
+bin/yt-dlp
+bin/yt-dlp.exe
+bin/yt-dlp_macos
