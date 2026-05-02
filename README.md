@@ -121,6 +121,26 @@ Set `VITE_USE_MOCK=true` in `client/.env` to use the built‑in mock API — han
 
 ---
 
+## Deploy Frontend To GitHub Pages
+
+This repo includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml`.
+It builds the Vite frontend from `client/` and publishes `client/dist` to GitHub Pages.
+
+In GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**. Then push to
+`main` or `master`, or run the workflow manually from the **Actions** tab.
+
+The deployed frontend uses the `/videodownloader/` base path for:
+
+```text
+https://shailsoft.github.io/videodownloader/
+```
+
+GitHub Pages only hosts the static React frontend. The Express backend still needs a Node hosting
+service, and the frontend must be configured with `VITE_API_BASE=https://your-backend-host/api`
+when you want real downloads instead of mock/local API calls.
+
+---
+
 ## 🧱 Architecture
 
 ```
