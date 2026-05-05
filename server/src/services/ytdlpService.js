@@ -11,6 +11,7 @@ let YTDLP = process.env.YTDLP_PATH || "yt-dlp";
 let FFMPEG = process.env.FFMPEG_PATH || "ffmpeg";
 let FFMPEG_AVAILABLE = false;
 let COOKIE_FILE = null; // resolved once at startup
+const DEFAULT_RENDER_COOKIE_FILE = "/etc/secrets/cookies.txt";
 const MAX_DURATION = Number(process.env.MAX_DURATION_SECONDS || 3600);
 
 /** Called once at server startup — resolves binary paths (downloads yt-dlp if needed). */
@@ -28,7 +29,8 @@ export async function initYtdlp() {
   //    Decoded once at startup into a tmp file.
   //
   // 2. YTDLP_COOKIES_FILE — path to a Netscape cookies.txt already on disk.
-  //    Good for Docker (mount as volume) or a traditional VPS.
+  //    Good for Docker, Render Secret Files, or a traditional VPS. If unset,
+  //    we also look for Render's conventional /etc/secrets/cookies.txt path.
   //
   // 3. YTDLP_COOKIES_FROM_BROWSER — "chrome" | "firefox" | "edge" | …
   //    Local dev only. Will fail on Render (no browser installed).
@@ -47,7 +49,8 @@ export async function initYtdlp() {
     return;
   }
 
-  const file = (process.env.YTDLP_COOKIES_FILE || "").trim();
+  const configuredFile = (process.env.YTDLP_COOKIES_FILE || "").trim();
+  const file = configuredFile || (existsSync(DEFAULT_RENDER_COOKIE_FILE) ? DEFAULT_RENDER_COOKIE_FILE : "");
   if (file) {
     if (existsSync(file)) {
       COOKIE_FILE = file;
@@ -83,6 +86,24 @@ function cookieArgs() {
   return [];
 }
 
+function hasCookiesConfigured() {
+  return Boolean(cookieArgs().length);
+}
+
+function isCookieAuthError(stderr) {
+  return /sign in to confirm|not a bot|--cookies|cookies-from-browser/i.test(stderr || "");
+}
+
+function ytDlpFailureMessage(code, stderr, fallbackLength = 500) {
+  if (isCookieAuthError(stderr)) {
+    if (hasCookiesConfigured()) {
+      return "YouTube rejected the configured cookies. Export a fresh cookies.txt from a recently logged-in browser session, update the Render Secret File named cookies.txt, then redeploy the API service.";
+    }
+    return "YouTube blocked this cloud server and requires browser cookies. In Render, open the API service, add a Secret File named cookies.txt with Netscape-format YouTube cookies, then redeploy.";
+  }
+  return `yt-dlp exited ${code}: ${stderr.trim().slice(-fallbackLength) || "unknown error"}`;
+}
+
 /** Used by the stylize controller when given a URL — downloads to a temp file. */
 export async function downloadToFile(url, outputPath) {
   url = validateUrl(url);
@@ -112,7 +133,7 @@ export async function downloadToFile(url, outputPath) {
         reject(
           new HttpError(
             502,
-            `yt-dlp exited ${code}: ${stderr.trim().slice(-300) || "unknown error"}`,
+            ytDlpFailureMessage(code, stderr, 300),
           ),
         );
     });
@@ -165,7 +186,7 @@ function runYtdlp(args) {
         reject(
           new HttpError(
             502,
-            `yt-dlp exited ${code}: ${stderr.trim().slice(-500) || "unknown error"}`,
+            ytDlpFailureMessage(code, stderr, 500),
           ),
         );
     });
