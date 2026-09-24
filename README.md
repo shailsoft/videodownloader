@@ -96,6 +96,22 @@ yt-dlp --version
 ffmpeg -version
 ```
 
+### Quick start (both services)
+
+From the repository root, install the frontend and backend dependencies and start both development servers:
+
+```bash
+npm run install:all
+npm run dev
+```
+
+Then open <http://localhost:5173>. The API runs at <http://localhost:5050>; press `Ctrl+C` to stop both services.
+
+If you only want to preview the interface without `yt-dlp`, copy `client/.env.example` to `client/.env`, set
+`VITE_USE_MOCK=true`, and run `npm run dev`.
+
+The services can also be started separately as described below.
+
 ### 1. Backend
 
 ```bash
